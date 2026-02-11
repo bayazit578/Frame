@@ -16,32 +16,32 @@ hui:
 
     call calc_adress
 
-    mov  byte ptr es:[bx - 1], 50h
-    mov  byte ptr es:[bx], (4ch or 80h)
+    mov  byte ptr es:[bx], 50h
+    mov  byte ptr es:[bx + 1], (4ch or 80h)
 
     mov  ax, 4c00h
     int  21h
 
 half_column:
-    mov ax, 1dh                             ;half column -> bx
+    mov ax, 19h                             ;half column -> bx
     mov cl, 02h
     div cl
     xor ah, ah
 
     mov bl, al
     xor bh, bh
-    inc bl
+    ;inc bx
     ret
 
 half_string:
-    mov ax, 80h                             ;half string -> cx
+    mov ax, 50h                             ;half string -> cx
     mov cl, 02h
     div cl
     xor ah, ah
 
     mov cl, al
     xor ch, ch
-    inc cl
+    ;inc cx
     ret
 
 half_cmd_string:
@@ -57,9 +57,11 @@ half_cmd_string:
     ret
 
 calc_adress:
-    mov al, 80h                             ;adress arithmetics -> bx
-    mul bl
+    mov ax, 50h                             ;adress arithmetics -> bx
+    mul bx
     add ax, cx
+    mov cx, 02h
+    mul cx
     mov bx, ax
     ret
 
