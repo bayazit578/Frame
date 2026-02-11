@@ -16,8 +16,8 @@ hui:
 
     call calc_adress
 
-    mov  byte ptr es:[bx], 21h
-    mov  byte ptr es:[bx + 1], 2ch
+    mov  byte ptr es:[bx - 1], 50h
+    mov  byte ptr es:[bx], (4ch or 80h)
 
     mov  ax, 4c00h
     int  21h
