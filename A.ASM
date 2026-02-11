@@ -2,67 +2,66 @@
 .code
 org 100h
 
-hui:
-    mov  ax, 0b800h                          ;video segment
-    mov  es, ax
+COLUMN  equ 29h
+STRING  equ 50h
+VRAMSEG equ 0b800h
 
-    call half_column
+start:
+    mov   ax, VRAMSEG                           ;video segment
+    mov   es, ax
 
-    call half_string
+    call  half_column                           ;half column -> bx
 
-    call half_cmd_string
+    call  half_string                           ;half str -> cx
+    call  half_cmd_string                       ;half cmd str -> dx
+    sub   cx, dx
 
-    sub  cx, ax
+    call  calc_adress                           ;adress arithmetics -> di
 
-    call calc_adress
+    call  get_cmd_length                        ;length -> dl
 
-    mov  byte ptr es:[bx], 50h
-    mov  byte ptr es:[bx + 1], (4ch or 80h)
+    xor   cx, cx
+    mov   cl, dl
+    mov   si, 82h
+    mov   ah, 0c0h
 
-    mov  ax, 4c00h
-    int  21h
+    jcxz  end_loop
+    dec   cx
+copy_loop:
+    lodsb
+    stosw
+    loop  copy_loop
+end_loop:
+
+    mov   ax, 4c00h
+    int   21h
 
 half_column:
-    mov ax, 19h                             ;half column -> bx
-    mov cl, 02h
-    div cl
-    xor ah, ah
-
-    mov bl, al
-    xor bh, bh
-    ;inc bx
+    mov   bx, COLUMN
+    shr   bx, 1
     ret
 
 half_string:
-    mov ax, 50h                             ;half string -> cx
-    mov cl, 02h
-    div cl
-    xor ah, ah
-
-    mov cl, al
-    xor ch, ch
-    ;inc cx
+    mov   cx, STRING
+    shr   cx, 1
     ret
 
 half_cmd_string:
-    push bx
+    call  get_cmd_length
+    shr   dx, 1
+    ret
 
-    mov  si, 80h                            ;half cmd str -> ax
-    mov  al, byte ptr ds:[si]
-    mov  bl, 02h
-    div  bl
-    xor  ah, ah
-
-    pop  bx
+get_cmd_length:
+    mov   si, 80h
+    mov   dl, byte ptr ds:[si]
     ret
 
 calc_adress:
-    mov ax, 50h                             ;adress arithmetics -> bx
-    mul bx
-    add ax, cx
-    mov cx, 02h
-    mul cx
-    mov bx, ax
+    mov   ax, STRING
+    mul   bl
+    add   ax, cx
+    shl   ax, 1
+    mov   di, ax
     ret
 
-end hui
+end start
