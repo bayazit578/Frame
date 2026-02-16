@@ -1,150 +1,271 @@
-Turbo Assembler	 Version 4.1	    02/12/26 17:11:58	    Page 1
+Turbo Assembler	 Version 4.1	    02/15/26 03:19:33	    Page 1
 a.asm
 
 
 
       1	0000			     .model tiny
-      2	0000			     .code
-      3				     org 100h
+      2
+      3	0000			     .data
       4
-      5	      =0019		     COLUMN	 equ 19h
-      6	      =0050		     STRING	 equ 50h
-      7	      =B800		     VRAMSEG	 equ 0b800h
-      8	      =0004		     TXT_COL	 equ 00000100b
-      9	      =0004		     FRAME_COL1	 equ 00000100b
-     10	      =0004		     FRAME_COL2	 equ 00000100b
-     11	      =0004		     FRAME_COL3	 equ 00000100b
-     12
-     13	0100			     start:
-     14	0100  B8 B800				 mov   ax, VRAMSEG			     ;video segment
-     15	0103  8E C0				 mov   es, ax
-     16
-     17	0105  E8 0021				 call  half_column			     ;half column -> bx
-     18
-     19	0108  E8 0024				 call  half_string			     ;half str -> dx
-     20	010B  E8 0027				 call  half_cmd_string			     ;half cmd str -> cx
-     21	010E  2B D1				 sub   dx, cx
+      5	0000  73 73 73 73 73 73	     FRAME_SYMB	 db 's', 's', 's', 's',	's', 's'
+      6	0006  C9 CD BB BA BC C8	     FRAME_SYMB1 db 0c9h, 0cdh,	0bbh, 0bah, 0bch, 0c8h		 ;double frame
+      7	000C  DA C4 BF B3 D9 C0	     FRAME_SYMB2 db 0dah, 0c4h,	0bfh, 0b3h, 0d9h, 0c0h		 ;single frame
+      8
+      9	0012			     .code
+     10				     org 100h
+     11
+     12	      =0019		     COLUMN	 equ 19h
+     13	      =0050		     STRING	 equ 50h
+     14	      =B800		     VRAMSEG	 equ 0b800h
+     15	      =0004		     TXT_COL	 equ 00000100b
+     16	      =0004		     FRAME_COL1	 equ 00000100b
+     17	      =0004		     FRAME_COL2	 equ 00000100b
+     18	      =0004		     FRAME_COL3	 equ 00000100b
+     19
+     20	0100  B8 B800		     Main:		 mov   ax, VRAMSEG
+     21	0103  8E C0					 mov   es, ax
      22
-     23	0110  E8 0034				 call  calc_txt_address			     ;address arithmetics -> di
+     23	0105  E8 002B					 call  half_column			 ;half column -> bx
      24
-     25	0113  E8 0025				 call  get_cmd_length			     ;length ->	cx
-     26
-     27	0116  BE 0082				 mov   si, 82h
-     28	0119  B4 04				 mov   ah, TXT_COL
-     29
-     30	011B  57				 push  di
-     31
-     32	011C				     text_loop:
-     33	011C  AC				 lodsb
-     34	011D  AB				 stosw
-     35	011E  E2 FC				 loop  text_loop
-     36
-     37	0120  5F				 pop   di
-     38
-     39	0121  E8 002F				 call  draw_frame_1
-     40
-     41	0124				     end_loop:						     ;if cx == 0
-     42	0124  B8 4C00				 mov   ax, 4c00h
-     43	0127  CD 21				 int   21h
+     25	0108  E8 0032					 call  half_string			 ;half str -> dx
+     26	010B  E8 0039					 call  half_cmd_string			 ;half cmd str -> cx
+     27	010E  2B D1					 sub   dx, cx
+     28
+     29	0110  E8 0051					 call  calc_txt_address			 ;address arithmetics -> di
+     30
+     31	0113  E8 003B					 call  get_txt_length			 ;length -> cx
+     32
+     33	0116  BE 0084					 mov   si, 84h				 ;text drawing
+     34	0119  B4 04					 mov   ah, TXT_COL
+     35
+     36	011B  57					 push  di
+     37
+     38	011C					     text_loop:
+     39	011C  AC					 lodsb
+     40	011D  AB					 stosw
+     41	011E  E2 FC					 loop  text_loop
+     42
+     43	0120  5F					 pop   di
      44
-     45	0129			     half_column:
-     46	0129  BB 0019				 mov   bx, COLUMN
-     47	012C  D1 EB				 shr   bx, 1
-     48	012E  C3				 ret
-     49
-     50	012F			     half_string:
-     51	012F  BA 0050				 mov   dx, STRING
-     52	0132  D1 EA				 shr   dx, 1
-     53	0134  C3				 ret
-     54
-     55	0135			     half_cmd_string:
-     56	0135  E8 0003				 call  get_cmd_length
-     57	0138  D1 E9				 shr   cx, 1
-Turbo Assembler	 Version 4.1	    02/12/26 17:11:58	    Page 2
+     45	0121  BE 0082					 mov   si, 82h				 ;get type of frame
+     46	0124  33 C9					 xor   cx, cx
+     47	0126  8A 0C					 mov   cl, byte	ptr ds:[si]
+     48
+     49	0128  BA 0000r					 mov   dx, offset FRAME_SYMB
+     50	012B  E8 0046					 call  draw_frame
+     51
+     52	012E					     end_loop:					 ;if cx	== 0
+     53	012E  B8 4C00					 mov   ax, 4c00h
+     54	0131  CD 21					 int   21h
+     55
+     56				     ;-----------------------------------------------------------
+     57				     ;
+Turbo Assembler	 Version 4.1	    02/15/26 03:19:33	    Page 2
 a.asm
 
 
 
-     58	013A  C3				 ret
-     59
-     60	013B			     get_cmd_length:
-     61	013B  BE 0080				 mov   si, 80h
-     62	013E  8A 0C				 mov   cl, byte	ptr ds:[si]
-     63	0140  E3 E2				 jcxz  end_loop
-     64	0142  FE C9				 dec   cl
-     65	0144  32 ED				 xor   ch, ch
-     66	0146  C3				 ret
+     58				     ;
+     59				     ;
+     60				     ;
+     61				     ;
+     62				     ;-----------------------------------------------------------
+     63
+     64	0133			     half_column	 proc
+     65	0133  55					 push  bp
+     66	0134  8B EC					 mov   bp, sp
      67
-     68	0147			     calc_txt_address :
-     69	0147  B8 0050				 mov   ax, STRING
-     70	014A  F6 E3				 mul   bl
-     71	014C  03 C2				 add   ax, dx
-     72	014E  D1 E0				 shl   ax, 1
-     73	0150  8B F8				 mov   di, ax
-     74	0152  C3				 ret
+     68	0136  BB 0019					 mov   bx, COLUMN
+     69	0139  D1 EB					 shr   bx, 1
+     70
+     71	013B  5D					 pop   bp
+     72	013C  C3					 ret
+     73
+     74	013D			     half_column	 endp
      75
-     76	0153			     draw_frame_1:
-     77	0153  BB 0052				 mov   bx, (STRING + 2)
-     78	0156  D1 E3				 shl   bx, 1
-     79	0158  2B FB				 sub   di, bx
-     80
-     81	015A  B4 04				 mov   ah, FRAME_COL1
-     82
-     83	015C  B0 C9				 mov   al, 0c9h
-     84	015E  AB				 stosw
-     85
-     86	015F  E8 FFD9				 call  get_cmd_length
-     87	0162  83 C1 02				 add   cx, 02h
-     88
-     89	0165  B0 CD				 mov   al, 0cdh
-     90	0167				     top_frame_loop:
-     91	0167  AB				 stosw
-     92	0168  E2 FD				 loop  top_frame_loop
+     76				     ;-----------------------------------------------------------
+     77				     ;
+     78				     ;
+     79				     ;
+     80				     ;
+     81				     ;
+     82				     ;-----------------------------------------------------------
+     83
+     84	013D			     half_string	 proc
+     85	013D  55					 push  bp
+     86	013E  8B EC					 mov   bp, sp
+     87
+     88	0140  BA 0050					 mov   dx, STRING
+     89	0143  D1 EA					 shr   dx, 1
+     90
+     91	0145  5D					 pop   bp
+     92	0146  C3					 ret
      93
-     94	016A  B0 BB				 mov   al, 0bbh
-     95	016C  AB				 stosw
-     96
-     97	016D  BB 004F				 mov   bx, (STRING - 1)
-     98	0170  D1 E3				 shl   bx, 1
-     99	0172  03 FB				 add   di, bx
-    100
-    101	0174  B0 BA				 mov   al, 0bah
-    102	0176  AB				 stosw
+     94	0147			     half_string	 endp
+     95
+     96				     ;-----------------------------------------------------------
+     97				     ;
+     98				     ;
+     99				     ;
+    100				     ;
+    101				     ;
+    102				     ;-----------------------------------------------------------
     103
-    104	0177  03 FB				 add   di, bx
-    105
-    106	0179  FD				 std					     ;df = 1 ->	-= 2
+    104	0147			     half_cmd_string	 proc
+    105	0147  55					 push  bp
+    106	0148  8B EC					 mov   bp, sp
     107
-    108	017A  B0 BC				 mov   al, 0bch
-    109	017C  AB				 stosw
+    108	014A  E8 0004					 call  get_txt_length
+    109	014D  D1 E9					 shr   cx, 1
     110
-    111	017D  E8 FFBB				 call  get_cmd_length
-    112	0180  83 C1 02				 add   cx, 02h
+    111	014F  5D					 pop   bp
+    112	0150  C3					 ret
     113
-    114	0183  B0 CD				 mov   al, 0cdh
-Turbo Assembler	 Version 4.1	    02/12/26 17:11:58	    Page 3
+    114	0151			     half_cmd_string	 endp
+Turbo Assembler	 Version 4.1	    02/15/26 03:19:33	    Page 3
 a.asm
 
 
 
-    115	0185				     bottom_frame_loop:
-    116	0185  AB				 stosw
-    117	0186  E2 FD				 loop  bottom_frame_loop
-    118
-    119	0188  B0 C8				 mov   al, 0c8h
-    120	018A  AB				 stosw
-    121
-    122	018B  BB 004F				 mov   bx, (STRING - 1)
-    123	018E  D1 E3				 shl   bx, 1
-    124	0190  2B FB				 sub   di, bx
-    125
-    126	0192  B0 BA				 mov   al, 0bah
-    127	0194  AB				 stosw
-    128
-    129	0195  C3				 ret
+    115
+    116				     ;-----------------------------------------------------------
+    117				     ;
+    118				     ;
+    119				     ;
+    120				     ;
+    121				     ;
+    122				     ;-----------------------------------------------------------
+    123
+    124	0151			     get_txt_length	 proc
+    125	0151  55					 push  bp
+    126	0152  8B EC					 mov   bp, sp
+    127
+    128	0154  BE 0080					 mov   si, 80h
+    129	0157  8A 0C					 mov   cl, byte	ptr ds:[si]
     130
-    131				     end start
-Turbo Assembler	 Version 4.1	    02/12/26 17:11:58	    Page 4
+    131	0159  E3 D3					 jcxz  end_loop
+    132
+    133	015B  FE C9					 dec   cl
+    134	015D  32 ED					 xor   ch, ch
+    135	015F  83 E9 02					 sub   cx, 02h
+    136
+    137	0162  5D					 pop   bp
+    138	0163  C3					 ret
+    139
+    140	0164			     get_txt_length	 endp
+    141
+    142				     ;-----------------------------------------------------------
+    143				     ;
+    144				     ;
+    145				     ;
+    146				     ;
+    147				     ;
+    148				     ;-----------------------------------------------------------
+    149
+    150	0164			     calc_txt_address	 proc
+    151	0164  55					 push  bp
+    152	0165  8B EC					 mov   bp, sp
+    153
+    154	0167  B8 0050					 mov   ax, STRING
+    155	016A  F6 E3					 mul   bl
+    156	016C  03 C2					 add   ax, dx
+    157	016E  D1 E0					 shl   ax, 1
+    158	0170  8B F8					 mov   di, ax
+    159
+    160	0172  5D					 pop   bp
+    161	0173  C3					 ret
+    162
+    163	0174			     calc_txt_address	 endp
+    164
+    165				     ;-----------------------------------------------------------
+    166				     ;
+    167				     ;
+    168				     ;
+    169				     ;
+    170				     ;
+    171				     ;-----------------------------------------------------------
+Turbo Assembler	 Version 4.1	    02/15/26 03:19:33	    Page 4
+a.asm
+
+
+
+    172
+    173	0174			     draw_frame		 proc
+    174	0174  55					 push  bp
+    175	0175  8B EC					 mov   bp, sp
+    176
+    177	0177  BB 0052					 mov   bx, (STRING + 2)			 ;starting address of the frame
+    178	017A  D1 E3					 shl   bx, 1
+    179	017C  2B FB					 sub   di, bx
+    180
+    181	017E  B4 04					 mov   ah, FRAME_COL1
+    182
+    183	0180  8A					 mov   al, byte	ptr ds:[dx]			  ;left	top corner
+**Error** a.asm(183) Illegal indexing mode
+    184	0181  AB					 stosw
+    185
+    186	0182  E8 FFCC					 call  get_txt_length
+    187	0185  83 C1 02					 add   cx, 02h
+    188
+    189	0188  8A					 mov   al, byte	ptr ds:[dx + 1]			  ;top side
+**Error** a.asm(189) Illegal indexing mode
+    190	0189					     top_frame_loop:
+    191	0189  AB					 stosw
+    192	018A  E2 FD					 loop  top_frame_loop
+    193
+    194	018C  8A					 mov   al, byte	ptr ds:[dx + 2]			  ;right top corner
+**Error** a.asm(194) Illegal indexing mode
+    195	018D  AB					 stosw
+    196
+    197	018E  BB 004F					 mov   bx, (STRING - 1)
+    198	0191  D1 E3					 shl   bx, 1
+    199	0193  03 FB					 add   di, bx
+    200
+    201	0195  8A					 mov   al, byte	ptr ds:[dx + 3]			  ;right side
+**Error** a.asm(201) Illegal indexing mode
+    202	0196  AB					 stosw
+    203
+    204	0197  03 FB					 add   di, bx
+    205
+    206	0199  FD					 std					 ;df = 1 -> -= 2
+    207
+    208	019A  8A					 mov   al, byte	ptr ds:[dx + 4]			  ;right bottom	corner
+**Error** a.asm(208) Illegal indexing mode
+    209	019B  AB					 stosw
+    210
+    211	019C  E8 FFB2					 call  get_txt_length
+    212	019F  83 C1 02					 add   cx, 02h
+    213
+    214	01A2  8A					 mov   al, byte	ptr ds:[dx + 1]			  ;bottom side
+**Error** a.asm(214) Illegal indexing mode
+    215	01A3					     bottom_frame_loop:
+    216	01A3  AB					 stosw
+    217	01A4  E2 FD					 loop  bottom_frame_loop
+    218
+    219	01A6  8A					 mov   al, byte	ptr ds:[dx + 5]			  ;left	bottom corner
+**Error** a.asm(219) Illegal indexing mode
+    220	01A7  AB					 stosw
+    221
+Turbo Assembler	 Version 4.1	    02/15/26 03:19:33	    Page 5
+a.asm
+
+
+
+    222	01A8  BB 004F					 mov   bx, (STRING - 1)
+    223	01AB  D1 E3					 shl   bx, 1
+    224	01AD  2B FB					 sub   di, bx
+    225
+    226	01AF  8A					 mov   al, byte	ptr ds:[dx + 3]			  ;left	side
+**Error** a.asm(226) Illegal indexing mode
+    227	01B0  AB					 stosw
+    228
+    229	01B1  5D					 pop   bp
+    230	01B2  C3					 ret
+    231
+    232	01B3			     draw_frame		 endp
+    233
+    234				     end Main
+Turbo Assembler	 Version 4.1	    02/15/26 03:19:33	    Page 6
 Symbol Table
 
 
@@ -152,9 +273,9 @@ Symbol Table
 
 Symbol Name			  Type	 Value
 
-??DATE				  Text	 "02/12/26"
+??DATE				  Text	 "02/15/26"
 ??FILENAME			  Text	 "a	  "
-??TIME				  Text	 "17:11:58"
+??TIME				  Text	 "03:19:32"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
 @CODE				  Text	 DGROUP
@@ -168,28 +289,44 @@ Symbol Name			  Type	 Value
 @MODEL				  Text	 1
 @STACK				  Text	 DGROUP
 @WORDSIZE			  Text	 2
-BOTTOM_FRAME_LOOP		  Near	 DGROUP:0185
-CALC_TXT_ADDRESS		  Near	 DGROUP:0147
+BOTTOM_FRAME_LOOP		  Near	 DGROUP:01A3
+CALC_TXT_ADDRESS		  Near	 DGROUP:0164
 COLUMN				  Number 0019
-DRAW_FRAME_1			  Near	 DGROUP:0153
-END_LOOP			  Near	 DGROUP:0124
+DRAW_FRAME			  Near	 DGROUP:0174
+END_LOOP			  Near	 DGROUP:012E
 FRAME_COL1			  Number 0004
 FRAME_COL2			  Number 0004
 FRAME_COL3			  Number 0004
-GET_CMD_LENGTH			  Near	 DGROUP:013B
-HALF_CMD_STRING			  Near	 DGROUP:0135
-HALF_COLUMN			  Near	 DGROUP:0129
-HALF_STRING			  Near	 DGROUP:012F
-START				  Near	 DGROUP:0100
+FRAME_SYMB			  Byte	 DGROUP:0000
+FRAME_SYMB1			  Byte	 DGROUP:0006
+FRAME_SYMB2			  Byte	 DGROUP:000C
+GET_TXT_LENGTH			  Near	 DGROUP:0151
+HALF_CMD_STRING			  Near	 DGROUP:0147
+HALF_COLUMN			  Near	 DGROUP:0133
+HALF_STRING			  Near	 DGROUP:013D
+MAIN				  Near	 DGROUP:0100
 STRING				  Number 0050
 TEXT_LOOP			  Near	 DGROUP:011C
-TOP_FRAME_LOOP			  Near	 DGROUP:0167
+TOP_FRAME_LOOP			  Near	 DGROUP:0189
 TXT_COL				  Number 0004
 VRAMSEG				  Number B800
 
 Groups & Segments		  Bit Size Align  Combine Class
 
 DGROUP				  Group
-  _DATA				  16  0000 Word	  Public  DATA
-  _TEXT				  16  0196 Word	  Public  CODE
+  _DATA				  16  0012 Word	  Public  DATA
+  _TEXT				  16  01B3 Word	  Public  CODE
+Turbo Assembler	 Version 4.1	    02/15/26 03:19:33	    Page 7
+Error Summary
+
+
+
+**Error** a.asm(183) Illegal indexing mode
+**Error** a.asm(189) Illegal indexing mode
+**Error** a.asm(194) Illegal indexing mode
+**Error** a.asm(201) Illegal indexing mode
+**Error** a.asm(208) Illegal indexing mode
+**Error** a.asm(214) Illegal indexing mode
+**Error** a.asm(219) Illegal indexing mode
+**Error** a.asm(226) Illegal indexing mode
 
