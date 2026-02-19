@@ -2,7 +2,6 @@
 
 .data
 
-FRAME_SYMB  db 's', 's', 's', 's', 's', 's', 's', 's'
 FRAME_SYMB1 db 0dah, 0c4h, 0bfh, 0b3h, 0d9h, 0c4h, 0c0h, 0b3h
 FRAME_SYMB2 db 0c9h, 0cdh, 0bbh, 0bah, 0bch, 0cdh, 0c8h, 0bah
 
