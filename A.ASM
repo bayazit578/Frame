@@ -77,23 +77,18 @@ Main:               mov   si, (CMD_STR + 2)                 ; get type of frame
                     
                     call  calc_txt_address                  ; address text in vram -> di
 
-                    ; mov   cx, si
-
                     mov   ah, TXT_COL
                     mov   dx, cx
 
-                    mov   si, 8dh
+                    mov   si, (CMD_STR + 2 + 1 + 9)
                     jb    string_drawing
                     
-                    mov   si, 84h
+                    mov   si, (CMD_STR + 4)
 
                     push  cx
                     mov   cx, dx
 
-                    string_drawing:
-                        lodsb
-                        stosw
-                        loop string_drawing
+                    call  print_string
 
                     pop   cx
 
@@ -119,15 +114,19 @@ Main:               mov   si, (CMD_STR + 2)                 ; get type of frame
 ;Descr: get_txt_length gets a length of cmd string without
 ;       parameters of the frame. In case of zero mode in 
 ;       cmd decreases length by 9
+;
 ;Entry:
+;
 ;Assum: there is end_loop label for the long jump where the 
 ;       program terminates
+;
 ;Exit:  CX - length of cmd string
+;
 ;Destr: SI, AX
 ;-----------------------------------------------------------
 
 get_txt_length      proc
-                    mov   si, 80h
+                    mov   si, CMD_STR
                     mov   cl, byte ptr ds:[si]
 
                     jcxz  terminate
@@ -136,7 +135,7 @@ get_txt_length      proc
                     xor   ch, ch
                     sub   cx, 02h                           ; because first two characters are the mode of the frame
 
-                    mov   si, 82h                           ; get type of frame
+                    mov   si, (CMD_STR + 2)                 ; get type of frame
                     xor   ax, ax
                     lodsb
                     sub   ax, '0'
@@ -153,10 +152,14 @@ get_txt_length      endp
 ;-----------------------------------------------------------
 ;Descr: calc_txt_address calculates address of start of the 
 ;       text in vram
+;
 ;Entry: DX    -  x in vram
 ;       BX    -  y in vram
+;
 ;Assum: ES - shoud set in vram segment
+;
 ;Exit:  ES:DI -> start of the text in vram   
+;
 ;Destr: AX
 ;-----------------------------------------------------------
 
@@ -173,11 +176,15 @@ calc_txt_address    endp
 ;-----------------------------------------------------------
 ;Descr: draw_frame draws the frame with symbols from string 
 ;       in SI
+;
 ;Entry: CX    -  length of text in frame
 ;       DS:SI -> string with frame parameters
 ;       ES:DI -> end of text in frame in vram
+;
 ;Assum: ES should points to vram segment
+;
 ;Exit: 
+;
 ;Destr: AX, CX, DI
 ;-----------------------------------------------------------
 
@@ -241,13 +248,17 @@ draw_frame          endp
 ;-----------------------------------------------------------
 ;Descr: search_occurences searches first occurence of char 
 ;       in string and returns its address
+;
 ;Entry: DS:[BP + 4]  -> string to search in
 ;       DS:[BP + 6]  -  length of the string
 ;       DS:[BP + 8]  -  char to look for
+;
 ;Assum: DI - should be reset to zero
 ;       CX - should be reset to zero
+;
 ;Exit:  SI - current biggest length of string in text
 ;       CX - current count of strings in text
+;
 ;Destr: AX, BX, DX, DI, ES
 ;-----------------------------------------------------------
 
@@ -290,16 +301,20 @@ search_occurences   endp
 
 ;-----------------------------------------------------------
 ;Descr: get_string_length counts the length of first string 
+;
 ;Entry: DI -> start of a target string
 ;       AX -  char that means end of the string
 ;       BX -  maximal length of the string
+;
 ;Assum: ES - should be setted to data segment
+;
 ;Exit:  DX -  length of the string till the char in AX or in 
 ;             case of failure to find it will return the 
 ;             maximal length
 ;       BX -  length of the rest of the text
 ;       DI -> start of the next string or to the symbol 
 ;             after string ending
+;
 ;Destr: CX
 ;-----------------------------------------------------------
 
@@ -321,13 +336,17 @@ get_string_length   endp
 ;-----------------------------------------------------------
 ;Descr: print_string dumps string with the given length to 
 ;       addres ES:DI 
+;
 ;Entry: SI -> start of a target string
 ;       CX -  string length
+;
 ;Assum: ES - should be setted to vram segment
+;
 ;Exit:  DX - length of the string till the char in AX or in
 ;            case of failure to find it will return the
 ;            maximal length
 ;       BX - length of the rest of the text
+;
 ;Destr: CX
 ;-----------------------------------------------------------
 
