@@ -8,16 +8,16 @@ FRAME_SYMB2 db 0c9h, 0cdh, 0bbh, 0bah, 0bch, 0cdh, 0c8h, 0bah
 .code
 org 100h
 
-COLUMN  equ 19h
-LINE    equ 50h
-VRAMSEG equ 0b800h
-TXT_COL equ 00000100b
-LIGHT   equ 00001000b
-RED     equ 00000100b
-GREEN   equ 00000010b
-BLUE    equ 00000001b
-CMD_STR equ 80h
-STR_END equ '#'
+COLUMN      equ 19h
+LINE        equ 50h
+VRAMSEG     equ 0b800h
+TXT_COL     equ 00000100b
+LIGHT       equ 00001000b
+RED         equ 00000100b
+GREEN       equ 00000010b
+BLUE        equ 00000001b
+CMD_STR     equ 80h
+STR_END     equ '#'
 
 locals @@
 
@@ -36,6 +36,8 @@ Main:               mov   si, (CMD_STR + 2)                 ; get type of frame
 
                     pushf
                     call  get_txt_length
+                    cmp   cx, 00h
+                    je    terminate
                     popf
 
                     mov   di, bx
@@ -52,54 +54,62 @@ Main:               mov   si, (CMD_STR + 2)                 ; get type of frame
 
                     add   sp, 06h
 
-                string_drawing:
-                    mov   bx, si
-                    call  get_string_length
-
+                text_drawing:
                     push  cx
 
+                    mov   bx, si
+                    call  get_string_length                 ; string length -> dx
+                    cmp   dx, 00h
+                    je    terminate
 
+                    pop   cx
+
+                    mov   ax, LINE                          ; x in vram -> dx
+                    sub   ax, dx
+                    shr   ax, 01h
+                    mov   dx, ax
 
                     mov   ax, VRAMSEG
                     mov   es, ax
-                    mov   ax, (COLUMN / 2)                  ; half column -> bx
-
-                    loop  string_drawing
-
+                    mov   bx, COLUMN                        ; y in vram -> bx 
+                    sub   bx, cx
+                    shr   bx, 01h
                     
-                    sub   ax, bx 
-
-                    mov   dx, (LINE / 2)                    ; svertka
-
-                    mov   si, cx
-                    shr   cx, 1
-                    sub   dx, cx
-
                     call  calc_txt_address                  ; address text in vram -> di
 
-                    mov   cx, si
+                    ; mov   cx, si
 
                     mov   ah, TXT_COL
                     mov   dx, cx
 
                     mov   si, 8dh
-                    jb    text_loop
+                    jb    string_drawing
                     
                     mov   si, 84h
 
-                
+                    push  cx
+                    mov   cx, dx
 
-                    mov   si, offset FRAME_SYMB1
-                    je    draw
+                    string_drawing:
+                        lodsb
+                        stosw
+                        loop string_drawing
 
-                    mov   si, offset FRAME_SYMB2
-                    jnbe  draw
+                    pop   cx
 
-                    xor   si, si
-                    mov   si, 84h
+                    loop  text_drawing
 
-                draw:
-                    call  draw_frame
+                ;     mov   si, offset FRAME_SYMB1
+                ;     je    draw
+
+                ;     mov   si, offset FRAME_SYMB2
+                ;     jnbe  draw
+
+                ;     xor   si, si
+                ;     mov   si, 84h
+
+                ; draw:
+                ;     call  draw_frame
 
                 terminate:                                  ; if cx == 0
                     mov   ax, 4c00h
@@ -132,7 +142,7 @@ get_txt_length      proc
                     sub   ax, '0'
 
                     cmp   ax, 00h
-                    jne    @@end
+                    jne   @@end
 
                     sub   cx, 09h
 
@@ -142,10 +152,10 @@ get_txt_length      endp
 
 ;-----------------------------------------------------------
 ;Descr: calc_txt_address calculates address of start of the 
-;       text at vram
-;Entry: BX    -  x in vram
-;       DX    -  y in vram
-;Assum: 
+;       text in vram
+;Entry: DX    -  x in vram
+;       BX    -  y in vram
+;Assum: ES - shoud set in vram segment
 ;Exit:  ES:DI -> start of the text in vram   
 ;Destr: AX
 ;-----------------------------------------------------------
@@ -154,7 +164,7 @@ calc_txt_address    proc
                     mov   ax, LINE
                     mul   bl
                     add   ax, dx
-                    shl   ax, 1
+                    shl   ax, 01h
                     mov   di, ax
 
                     ret
@@ -298,12 +308,13 @@ get_string_length   proc
                     mov   dx, bx
                     mov   cx, bx
 
-                    jcxz  terminate
+                    jcxz  @@end
 
                     repne scasb
                     sub   dx, cx
                     mov   bx, cx
 
+                @@end:
                     ret
 get_string_length   endp
 
@@ -311,7 +322,7 @@ get_string_length   endp
 ;Descr: print_string dumps string with the given length to 
 ;       addres ES:DI 
 ;Entry: SI -> start of a target string
-;       CX -  length of the string
+;       CX -  string length
 ;Assum: ES - should be setted to vram segment
 ;Exit:  DX - length of the string till the char in AX or in
 ;            case of failure to find it will return the

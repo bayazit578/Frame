@@ -2,4 +2,4 @@
 *.LST
 *.MAP
 *.OBJ
-*.todo
+todo.md
