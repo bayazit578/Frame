@@ -8,26 +8,69 @@ FRAME_SYMB2 db 0c9h, 0cdh, 0bbh, 0bah, 0bch, 0cdh, 0c8h, 0bah
 .code
 org 100h
 
-COLUMN      equ 19h
-LINE        equ 50h
-VRAMSEG     equ 0b800h
-TXT_COL     equ 00000100b
-FRAME_COL1  equ 00000100b
-FRAME_COL2  equ 00000010b
-FRAME_COL3  equ 00000001b
-CMD_STR     equ 80h
+COLUMN  equ 19h
+LINE    equ 50h
+VRAMSEG equ 0b800h
+TXT_COL equ 00000100b
+LIGHT   equ 00001000b
+RED     equ 00000100b
+GREEN   equ 00000010b
+BLUE    equ 00000001b
+CMD_STR equ 80h
+STR_END equ '#'
 
 locals @@
 
-Main:               mov   ax, VRAMSEG
-                    mov   es, ax
-                    mov   bx, COLUMN                        ; half column -> bx
-                    shr   bx, 1
+Main:               mov   si, (CMD_STR + 2)                 ; get type of frame
+                    xor   ax, ax                            ; no magic 80s
+                    lodsb
+                    sub   ax, '0'
 
-                    mov   dx, LINE                          ; svertka
-                    shr   dx, 1
+                    cmp   ax, 01h                           ; check if zero mode in cmd and sets address 
+                                                            ; of start of the text in data seg
 
+                    mov   di, (CMD_STR + 2 + 1 + 9)
+                    jb    get_string_count
+                    mov   di, (CMD_STR + 4)
+                    mov   bx, di
+
+                    pushf
                     call  get_txt_length
+                    popf
+
+                    mov   di, bx
+
+                get_string_count:
+                    push  STR_END
+                    push  cx
+                    push  di
+                    xor   cx, cx
+                    xor   si, si
+
+                    call  search_occurences                 ; string count -> cx
+                                                            ; longest string -> si
+
+                    add   sp, 06h
+
+                string_drawing:
+                    mov   bx, si
+                    call  get_string_length
+
+                    push  cx
+
+
+
+                    mov   ax, VRAMSEG
+                    mov   es, ax
+                    mov   ax, (COLUMN / 2)                  ; half column -> bx
+
+                    loop  string_drawing
+
+                    
+                    sub   ax, bx 
+
+                    mov   dx, (LINE / 2)                    ; svertka
+
                     mov   si, cx
                     shr   cx, 1
                     sub   dx, cx
@@ -36,15 +79,6 @@ Main:               mov   ax, VRAMSEG
 
                     mov   cx, si
 
-                    mov   si, 82h                           ; get type of frame
-                    xor   ax, ax                            ; no magic 80s
-                    lodsb
-                    sub   ax, '0'
-
-                    push  di
-
-                    cmp   ax, 01h                           ; check if zero mode in cmd and sets address 
-                                                            ; of start of the text in data seg
                     mov   ah, TXT_COL
                     mov   dx, cx
 
@@ -53,18 +87,11 @@ Main:               mov   ax, VRAMSEG
                     
                     mov   si, 84h
 
-                text_loop:                                  ; text drawing
-                    lodsb
-                    stosw
-                    loop  text_loop
-                    mov   cx, dx
-
-                    pop   di
+                
 
                     mov   si, offset FRAME_SYMB1
                     je    draw
 
-                    ; xor   si, si
                     mov   si, offset FRAME_SYMB2
                     jnbe  draw
 
@@ -154,11 +181,10 @@ draw_frame          proc
                                          
                     sub   di, (LINE + 2) * 2                ; starting address of the frame
 
-                    mov   ah, FRAME_COL1
+                    mov   ah, RED
 
                     lodsb                                   ; left top corner
                     stosw
-
 
                     mov   bx, cx
 
@@ -201,5 +227,107 @@ draw_frame          proc
                     pop   bp
                     ret
 draw_frame          endp
+
+;-----------------------------------------------------------
+;Descr: search_occurences searches first occurence of char 
+;       in string and returns its address
+;Entry: DS:[BP + 4]  -> string to search in
+;       DS:[BP + 6]  -  length of the string
+;       DS:[BP + 8]  -  char to look for
+;Assum: DI - should be reset to zero
+;       CX - should be reset to zero
+;Exit:  SI - current biggest length of string in text
+;       CX - current count of strings in text
+;Destr: AX, BX, DX, DI, ES
+;-----------------------------------------------------------
+
+search_occurences   proc
+                    push  bp
+                    mov   bp, sp
+
+                    mov   di, ds:[bp + 4]
+                    mov   ax, ds
+                    mov   es, ax
+                    mov   bx, ds:[bp + 6]
+                    mov   ax, ds:[bp + 8]
+
+                    push  cx
+                    call  get_string_length
+                    pop   cx
+
+                    inc   cx                                ; increase a counter in new iteration
+
+                    cmp   dx, si
+                    jna   @@continue
+                    mov   si, dx
+
+                @@continue:
+                    cmp   bx, 00h
+                    je    @@end
+
+                    push  ax
+                    push  bx
+                    push  di
+
+                    call  search_occurences
+
+                    add   sp, 06h
+
+                @@end:
+                    pop   bp
+                    ret
+search_occurences   endp
+
+;-----------------------------------------------------------
+;Descr: get_string_length counts the length of first string 
+;Entry: DI -> start of a target string
+;       AX -  char that means end of the string
+;       BX -  maximal length of the string
+;Assum: ES - should be setted to data segment
+;Exit:  DX -  length of the string till the char in AX or in 
+;             case of failure to find it will return the 
+;             maximal length
+;       BX -  length of the rest of the text
+;       DI -> start of the next string or to the symbol 
+;             after string ending
+;Destr: CX
+;-----------------------------------------------------------
+
+get_string_length   proc
+                    cld
+                    mov   dx, bx
+                    mov   cx, bx
+
+                    jcxz  terminate
+
+                    repne scasb
+                    sub   dx, cx
+                    mov   bx, cx
+
+                    ret
+get_string_length   endp
+
+;-----------------------------------------------------------
+;Descr: print_string dumps string with the given length to 
+;       addres ES:DI 
+;Entry: SI -> start of a target string
+;       CX -  length of the string
+;Assum: ES - should be setted to vram segment
+;Exit:  DX - length of the string till the char in AX or in
+;            case of failure to find it will return the
+;            maximal length
+;       BX - length of the rest of the text
+;Destr: CX
+;-----------------------------------------------------------
+
+print_string        proc
+                text_loop:
+                    lodsb
+                    stosw
+                    loop  text_loop
+                    ; mov   cx, dx
+
+                    ret
+print_string        endp
 
 end Main
