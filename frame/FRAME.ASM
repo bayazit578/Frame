@@ -22,16 +22,16 @@ STR_END     equ '#'
 locals @@
 
 Main:               mov   si, (CMD_STR + 2)                 ; get type of frame
-                    xor   ax, ax                            ; no magic 80s
+                    xor   ax, ax
                     lodsb
                     sub   ax, '0'
 
                     cmp   ax, 01h                           ; check if zero mode in cmd and sets address 
                                                             ; of start of the text in data seg
 
-                    mov   di, (CMD_STR + 13)
+                    mov   di, (CMD_STR + 0dh)
                     jb    get_string_count
-                    mov   di, (CMD_STR + 4)
+                    mov   di, (CMD_STR + 5)
                     mov   bx, di
 
                     pushf
@@ -50,24 +50,27 @@ Main:               mov   si, (CMD_STR + 2)                 ; get type of frame
 
                     call  search_occurences                 ; string count -> cx
                                                             ; longest string -> si
+                    pop   di
+                    add   sp, 04h
 
-                    add   sp, 06h
-                    popf
+                    mov   bp, 00h
 
                 text_drawing:
-                    push  cx
+                    push  ax cx
 
-                    pushf
                     mov   bx, si
-                    call  get_string_length                 ; string length -> dx
+
+                    ; push  di
+                    call  get_string_length                 ; string length -> dx 
+                                                            ; di -> next string, d:cx
                     cmp   dx, 00h
                     je    terminate
-                    popf
-
+                    
                     pop   cx
 
+                    push  di dx
                     pushf
-                    
+
                     mov   ax, VRAMSEG
                     mov   es, ax
 
@@ -79,25 +82,29 @@ Main:               mov   si, (CMD_STR + 2)                 ; get type of frame
                     mov   bx, COLUMN                        ; y in vram -> bx 
                     sub   bx, cx
                     shr   bx, 01h
+                    add   bx, bp
+                    inc   bp
                     
-                    call  calc_txt_address                  ; address text in vram -> di
+                    call  calc_txt_address                  ; address text in vram -> di , d:ax
+
+                    popf
+                    pop   dx 
 
                     mov   ah, TXT_COL
-                    mov   dx, cx
 
-                    mov   si, (CMD_STR + 13)
-                    popf
-                    jb    string_drawing
-                    
-                    mov   si, (CMD_STR + 4)
+                    push  si
+                    ; mov   si, (CMD_STR + 13)
+                    ; jb    string_drawing
+
+                    ; mov   si, (CMD_STR + 4)
 
                     push  cx
                     mov   cx, dx
 
-                string_drawing:
-                    call  print_string
+                    string_drawing:
+                        call  print_string
 
-                    pop   cx
+                    pop   cx si di ax
 
                     loop  text_drawing
 
@@ -334,7 +341,11 @@ get_string_length   proc
 
                     repne scasb
                     sub   dx, cx
+                    inc   di
                     mov   bx, cx
+                    cmp   bx, 00h
+                    je    @@end
+                    dec   bx
 
                 @@end:
                     ret
